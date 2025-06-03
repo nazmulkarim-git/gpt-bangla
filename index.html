@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BanglaGPT</title>
+  <style>
+    body { font-family: 'Helvetica', sans-serif; padding: 30px; background: #f3f3f3; }
+    h1 { color: #222; }
+    .chatbox { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; }
+    .message { margin: 10px 0; }
+    .user { color: blue; }
+    .bot { color: green; }
+  </style>
+</head>
+<body>
+  <div class="chatbox">
+    <h1>🤖 BanglaGPT</h1>
+    <div id="chatlog"></div>
+    <textarea id="input" rows="3" style="width:100%" placeholder="আপনার প্রশ্ন লিখুন বা বলুন..."></textarea>
+    <br/>
+    <button onclick="sendMessage()">✉️ পাঠান</button>
+    <button onclick="startVoiceInput()">🎤 বলুন</button>
+    <button onclick="speakLastReply()">🔈 শুনুন</button>
+  </div>
+
+  <script>
+    const chatlog = document.getElementById("chatlog");
+    let lastBotReply = "";
+
+    function appendMessage(text, sender) {
+      const div = document.createElement("div");
+      div.className = "message " + sender;
+      div.innerText = (sender === "user" ? "🧍‍♂️: " : "🤖: ") + text;
+      chatlog.appendChild(div);
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("input");
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage(message, "user");
+      input.value = "";
+
+      const res = await fetch("http://localhost:5000/api/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+      lastBotReply = data.reply;
+      appendMessage(lastBotReply, "bot");
+    }
+
+    function startVoiceInput() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "bn-BD";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = function(event) {
+        const speechResult = event.results[0][0].transcript;
+        document.getElementById("input").value = speechResult;
+        sendMessage();
+      };
+
+      recognition.onerror = function(event) {
+        alert("ভয়েস ইনপুটে সমস্যা হয়েছে: " + event.error);
+      };
+
+      recognition.start();
+    }
+
+    function speakLastReply() {
+      if (!lastBotReply) return;
+      const synth = window.speechSynthesis;
+      const utter = new SpeechSynthesisUtterance(lastBotReply);
+      utter.lang = "bn-BD";
+      synth.speak(utter);
+    }
+  </script>
+</body>
+</html>
